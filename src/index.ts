@@ -1,13 +1,10 @@
-import * as lib from "@iota/iota.js";
-import { Converter, WriteStream } from "@iota/util.js";
+import { Converter } from "@iota/util.js";
 import { Bip32Path, Ed25519 } from "@iota/crypto.js";
-import { randomBytes } from "crypto";
 import { NeonPowProvider } from "@iota/pow-neon.js";
-import bigInt from "big-integer";
+import { mintCollectionNft, createNftCollectionOutputs, mintCollectionNfts, caluclateNonce } from "./utils/create_nft";
+import * as lib from "@iota/iota.js";
 import * as console from "console";
-import fetch from "node-fetch";
 
-import { mintCollectionNft, createNftCollectionOutputs, mintCollectionNfts } from "./create_nft";
 
 const EXPLORER = "https://explorer.shimmer.network/testnet";
 const API_ENDPOINT = "https://api.testnet.shimmer.network";
@@ -38,11 +35,14 @@ import {
   UnlockTypes,
 } from "@iota/iota.js";
 
-async function run() {
-  // Neon localPoW is blazingly fast, but you need rust toolchain to build
+export * as utils from  "./utils/create_nft";
+
+export default async function run_demo() {
+  // Neon localPoW is blazingly fast, but you need our beloved rust toolchain to build - rustup ftw
   const client = new SingleNodeClient(API_ENDPOINT, {
     powProvider: new NeonPowProvider(),
   });
+  
   const indexerPluginClient = new IndexerPluginClient(client);
 
   //Fetch node info
@@ -57,7 +57,7 @@ async function run() {
   // To use your address put here you mnemonic
   const mnemonic =
     "assist file add kidney sense anxiety march quality sphere stamp crime swift mystery bind thrive impact walk solar asset pottery nation dutch column beef";
-  // Generate the seed from the Mnemonic
+  // Generate the seed from the Mnemonic\
   const walletSeed = Ed25519Seed.fromMnemonic(mnemonic);
   // Generate the seed for the wallet
   //const walletSeed = new Ed25519Seed(randomBytes(32));
@@ -176,7 +176,7 @@ async function run() {
 
    console.log("Chaining together transactions via blocks...");
    // Finally, time to prepare the three blocks, and chain them together via `parents`
-   let blocks: lib.IBlock[] = await chainTrasactionsViaBlocks(client, txList, nodeInfo.protocol.minPowScore);
+   let blocks: lib.IBlock[] = await chainTransactionsViaBlocks(client, txList, nodeInfo.protocol.minPowScore);
 
    // send the blocks to the network
    // We calculated pow by hand, so we don't define a localPow provider for the client so it doesn't redo the pow again.
@@ -184,7 +184,7 @@ async function run() {
 }
 
 // Use the indexer API to fetch the output sent to the wallet address by the faucet
-async function fetchAndWaitForBasicOutput(
+export async function fetchAndWaitForBasicOutput(
   addressBech32: string,
   client: lib.IndexerPluginClient
 ): Promise<string> {
@@ -224,7 +224,7 @@ async function fetchAndWaitForBasicOutput(
 
 
 // The first block will have parents fetched from the tangle. The subsequent blocks refernce always the previous block as parent.
-async function chainTrasactionsViaBlocks(client: lib.SingleNodeClient, txs: Array<lib.ITransactionPayload>, minPowScore: number): Promise<Array<lib.IBlock>> {
+export async function chainTransactionsViaBlocks(client: lib.SingleNodeClient, txs: Array<lib.ITransactionPayload>, minPowScore: number): Promise<Array<lib.IBlock>> {
     if (txs.length === 0) {
         throw new Error("can't create blocks from empty transaction payload list");
     }
@@ -274,7 +274,7 @@ async function chainTrasactionsViaBlocks(client: lib.SingleNodeClient, txs: Arra
 
 
 // Send an array of block in order to the node.
-async function submit(blocks: Array<lib.IBlock>, client: lib.SingleNodeClient) {
+export async function submit(blocks: Array<lib.IBlock>, client: lib.SingleNodeClient) {
     for (let i = 0; i < blocks.length; i++) {
         console.log(`Submitting block ${i+1}...`);
         const blockId = await client.blockSubmit(blocks[i]);
@@ -282,28 +282,4 @@ async function submit(blocks: Array<lib.IBlock>, client: lib.SingleNodeClient) {
     }
 }
 
-
-/***********************************************************************************************************************
- * UTILS
- ***********************************************************************************************************************/
-// Performs PoW on a block to calculate nonce. Uses NeonPowProvider.
-async function caluclateNonce(block: lib.IBlock, minPowScore: number): Promise<string> {
-    const writeStream = new WriteStream();
-    lib.serializeBlock(writeStream, block);
-    const blockBytes = writeStream.finalBytes();
-
-    if (blockBytes.length > lib.MAX_BLOCK_LENGTH) {
-        throw new Error(
-            `The block length is ${blockBytes.length}, which exceeds the maximum size of ${lib.MAX_BLOCK_LENGTH}`
-        );
-    }
-
-    const powProvider = new NeonPowProvider(4);
-    const nonce = await powProvider.pow(blockBytes, minPowScore);
-    return nonce.toString();
-}
-
-
-run()
-  .then(() => console.log("Done"))
-  .catch((err) => console.error(err));
+run_demo().then(res =>{console.log(res)}).catch(err=>console.error(err))

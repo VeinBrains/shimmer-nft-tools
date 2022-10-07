@@ -3,12 +3,34 @@ import { Converter, WriteStream } from "@iota/util.js";
 import { Bip32Path, Ed25519 } from "@iota/crypto.js";
 import bigInt from "big-integer";
 
+import { NeonPowProvider } from "@iota/pow-neon.js";
+
+/***********************************************************************************************************************
+ * UTILS
+ ***********************************************************************************************************************/
+// Performs PoW on a block to calculate nonce. Uses NeonPowProvider.
+export async function caluclateNonce(block: lib.IBlock, minPowScore: number): Promise<string> {
+    const writeStream = new WriteStream();
+    lib.serializeBlock(writeStream, block);
+    const blockBytes = writeStream.finalBytes();
+
+    if (blockBytes.length > lib.MAX_BLOCK_LENGTH) {
+        throw new Error(
+            `The block length is ${blockBytes.length}, which exceeds the maximum size of ${lib.MAX_BLOCK_LENGTH}`
+        );
+    }
+
+    const powProvider = new NeonPowProvider(4);
+    const nonce = await powProvider.pow(blockBytes, minPowScore);
+    return nonce.toString();
+}
+
 /***********************************************************************************************************************
  * FUNCTIONS TO CREATE THE TRANSACTIONS
  ***********************************************************************************************************************/
 
- // export function mintCollectionNft(consumedOutput: lib.OutputTypes, consumedOutputId: string, walletAddressHex: string, walletKeyPair: lib.IKeyPair, targetAddress: lib.AddressTypes, networkId: any): lib.ITransactionPayload{
- export function mintCollectionNft(consumedOutput: lib.OutputTypes, consumedOutputId: string, walletAddressHex: string, walletKeyPair: lib.IKeyPair, targetAddress: lib.AddressTypes, networkId: any): any{
+// export function mintCollectionNft(consumedOutput: lib.OutputTypes, consumedOutputId: string, walletAddressHex: string, walletKeyPair: lib.IKeyPair, targetAddress: lib.AddressTypes, networkId: any): lib.ITransactionPayload{
+export function mintCollectionNft(consumedOutput: lib.OutputTypes, consumedOutputId: string, walletAddressHex: string, walletKeyPair: lib.IKeyPair, targetAddress: lib.AddressTypes, networkId: any): any {
     // Prepare inputs to the tx
     const input = lib.TransactionHelper.inputFromOutputId(consumedOutputId);
 
@@ -29,7 +51,15 @@ import bigInt from "big-integer";
             },
             {
                 type: lib.METADATA_FEATURE_TYPE, // Metadata Feature
-                data: Converter.utf8ToHex("This is where the immutable NFT metadata goes.", true)
+                data: Converter.utf8ToHex(JSON.stringify({
+                    opensea_format: true,
+                    veinbrain: true,
+                    traits: [
+                        { rarity: 'legendary' },
+                        { vein_brains: 'gigasize' },
+                        { gpu_model: 'GPT-J v1337' },
+                    ]
+                },null,4), true)
             }
         ],
         unlockConditions: [
@@ -98,43 +128,43 @@ import bigInt from "big-integer";
     // ctx.outputByName?.set("tx1Basic", remainderOutput);
 
 
-        console.log("tx1CollectionNft", nftOutputId)
-        console.log("tx1CollectionNft", nftOutput)
-        console.log("tx1Basic", basicOutputId)
-        console.log("tx1Basic", remainderOutput)
-const obj = {
-    tx1CollectionNftOutputId: nftOutputId,
-    tx1CollectionNftOutput: nftOutput,
-    tx1BasicOutputId: basicOutputId,
-    tx1BasicRemainderOutput: remainderOutput,
-    txPayload: txPayload,
-}
+    console.log("tx1CollectionNft", nftOutputId)
+    console.log("tx1CollectionNft", nftOutput)
+    console.log("tx1Basic", basicOutputId)
+    console.log("tx1Basic", remainderOutput)
+    const obj = {
+        tx1CollectionNftOutputId: nftOutputId,
+        tx1CollectionNftOutput: nftOutput,
+        tx1BasicOutputId: basicOutputId,
+        tx1BasicRemainderOutput: remainderOutput,
+        txPayload: txPayload,
+    }
 
     return obj;
 }
 
 
 //Create NFT collection outputs that will be mionted using collectionNft
-export function createNftCollectionOutputs(issuerAddress: lib.INftAddress, targetAddress: lib.AddressTypes, royaltyAddress: string, collectionSize: number, nodeInfo: lib.INodeInfo): { outputs: lib.INftOutput[], totalDeposit: number }{
+export function createNftCollectionOutputs(issuerAddress: lib.INftAddress, targetAddress: lib.AddressTypes, royaltyAddress: string, collectionSize: number, nodeInfo: lib.INodeInfo): { outputs: lib.INftOutput[], totalDeposit: number } {
     let nftCollection: {
         outputs: lib.INftOutput[],
         totalDeposit: number
-    } = { outputs:[], totalDeposit: 0 };
+    } = { outputs: [], totalDeposit: 0 };
 
     for (let i = 0; i < collectionSize; i++) {
         const nft = {
-            "standard" : "IRC27",
+            "standard": "IRC27",
             "type": "image",
             "version": "v1.0",
-            "tokenURI": "https://robohash.org/shimmer-" + i + ".png",
-            "tokenName": "My NFT #" + i,
+            "tokenURI": "https://ipfs.veinbrains.dev/soon-" + i + ".png",
+            "tokenName": "GigaBrain #" + i,
             "collectionId": issuerAddress.nftId,
-            "collectionName": "My Collection of Art",
+            "collectionName": "BrainGenesis #1",
             "royalties": {
                 [royaltyAddress]: 0.025
             },
-            "issuerName": "My Artist Name",
-            "description": "A little information about my NFT collection"
+            "issuerName": "@VeinBrains",
+            "description": "soon, what else"
         }
         // Create the outputs, that is an NFT output
         let nftOutput: lib.INftOutput = {
@@ -165,7 +195,7 @@ export function createNftCollectionOutputs(issuerAddress: lib.INftAddress, targe
 
         //Change NFT output amount to requred deposit storage
         nftOutput.amount = requiredStorageDeposit.toString();
-       
+
         nftCollection.totalDeposit += requiredStorageDeposit;
         nftCollection.outputs.push(nftOutput);
     }
@@ -175,7 +205,7 @@ export function createNftCollectionOutputs(issuerAddress: lib.INftAddress, targe
 
 
 
-export function mintCollectionNfts(txName: string, resolveCollectionNftId: boolean, consumedOutput: lib.OutputTypes, consumedOutputId: string, collectionOutputs: lib.OutputTypes[], totalDeposit: number, signerKeyPair: lib.IKeyPair, networkId: any): lib.ITransactionPayload{
+export function mintCollectionNfts(txName: string, resolveCollectionNftId: boolean, consumedOutput: lib.OutputTypes, consumedOutputId: string, collectionOutputs: lib.OutputTypes[], totalDeposit: number, signerKeyPair: lib.IKeyPair, networkId: any): lib.ITransactionPayload {
     // Prepare inputs to the tx
     const input = lib.TransactionHelper.inputFromOutputId(consumedOutputId);
 
@@ -185,11 +215,11 @@ export function mintCollectionNfts(txName: string, resolveCollectionNftId: boole
     // Transition the CollectionNft
     let collectionNft = deepCopy(consumedOutput) as lib.INftOutput;
     // resolve nft Id if its all zeros
-    if(resolveCollectionNftId){
+    if (resolveCollectionNftId) {
         collectionNft.nftId = lib.TransactionHelper.resolveIdFromOutputId(consumedOutputId);
     }
-     
-    collectionNft.amount = bigInt(consumedOutput.amount).minus(totalDeposit).toString(); 
+
+    collectionNft.amount = bigInt(consumedOutput.amount).minus(totalDeposit).toString();
 
     // 5.Create transaction essence
     const collectionTransactionEssence: lib.ITransactionEssence = {
@@ -216,7 +246,7 @@ export function mintCollectionNfts(txName: string, resolveCollectionNftId: boole
     ];
 
     // Create transaction payload
-     const txPayload: lib.ITransactionPayload = {
+    const txPayload: lib.ITransactionPayload = {
         type: lib.TRANSACTION_PAYLOAD_TYPE,
         essence: collectionTransactionEssence,
         unlocks: unlockConditions

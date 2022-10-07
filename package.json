@@ -1,16 +1,16 @@
 {
   "name": "shimmer-nft-tools",
   "version": "1.0.0",
-  "description": "",
+  "description": "soon",
   "main": "dist/index.js",
   "scripts": {
-    "dist": "tsc",
-    "build-watch": "tsc -w",
+    "build": "tsup --dts",
+    "build:watch": "tsup --watch --dts",
     "start": "node dist/index"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "huhn && the_brainz",
+  "license": "WTFPL",
   "dependencies": {
     "@iota/crypto.js": "^2.0.0-rc.1",
     "@iota/iota.js": "^2.0.0-rc.1",
@@ -23,6 +23,8 @@
   "devDependencies": {
     "@types/bluebird": "^3.5.36",
     "@types/node-fetch": "^2.6.2",
-    "tslib": "^2.4.0"
+    "create-turbo": "^1.5.5",
+    "tslib": "^2.4.0",
+    "tsup": "^6.2.3"
   }
 }
